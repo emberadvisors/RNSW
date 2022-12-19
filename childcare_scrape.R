@@ -16,17 +16,14 @@ library(absmapsdata) #to install run remotes::install_github("wfmackey/absmapsda
 ## Read functions
 source("./R/get_data.R")
 
-## Get postcodes we are interested in
+## Get NSW postcodes
 # ABS correspondence for postcode to LGA so we can get postcodes for the relevant LGAs in Central West 
-corro <- absmapsdata::get_correspondence_absmaps("postcode", 2019, "lga", 2019)
-
-# Make list of relevant LGAs in Central West directorate
-central_west_lga <- c("bathurst|blayney|cabonne|cowra|forbes|lachlan|lithgow|oberon|orange|parkes|weddin")
-
-# Filter postcodes to only those in central_west_lga
-central_west_abs <- corro %>%
-  filter(str_detect(tolower(LGA_NAME_2019), central_west_lga) & !str_detect(tolower(LGA_NAME_2019), "shire"))
-postcodes <- corro$POSTCODE_2019 %>%
+corro <- absmapsdata::get_correspondence_absmaps("postcode", 2019, "state", 2016) %>%
+  filter(STATE_NAME_2016 == "New South Wales",
+         ratio > 0.90) %>%
+  select(postcode = POSTCODE_2019) %>%
+  unique()
+postcodes <- corro$postcode %>%
   unique()
 
 ## Get the urls for the relevant websites we are scraping
@@ -55,12 +52,9 @@ rent_data <- purrr::map2(.x = urls$rents_url,
 ## Get only the scrape yielding results (purrr::safely splits out valid results and errors)
 childcare_data_df <- childcare_data %>%
   map("result") %>%
-  bind_rows()
-
-rent_data_df <- rent_data %>%
-  map("result") %>%
-  bind_rows()
+  bind_rows() %>%
+  mutate(state = "nsw")
 
 ## Write data
-write.csv(childcare_data_df, "./childcare_data.csv")
-write.csv(rent_data_df, "./rent_data.csv")
+write.csv(childcare_data_df, "./childcare_data_poa.csv")
+write.csv(rent_data_df, "./rent_data_poa.csv")
