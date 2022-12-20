@@ -57,13 +57,41 @@ childcare_state <- childcare %>%
   slice_max(n) %>%
   select(avg_quality) %>%
   bind_cols(childcare_state) %>%
-  tibble()
+  tibble() %>%
+  rename(geography = state)
 
 rent_state <- rent %>%
   filter(!is.na(median_rent)) %>%
   group_by(state, week_ending) %>%
   summarise(median_rent = median(median_rent),
-            median_change = median(X12_month_change))
+            median_change = median(X12_month_change)) %>%
+  rename(geography = state)
+
+## Central West average
+childcare_cw <- childcare %>% 
+  filter(cw_lga == 1) %>%
+  summarise(total_centres = sum(total_centres),
+            vacancies = sum(vacancies),
+            vacancy_rate = vacancies/total_centres,
+            avg_cost = median(avg_cost))
+
+# get quality 
+childcare_cw <- childcare %>%
+  filter(cw_lga == 1) %>%
+  count(avg_quality) %>%
+  slice_max(n) %>%
+  select(avg_quality) %>%
+  bind_cols(childcare_cw) %>%
+  tibble() %>%
+  mutate(geography = "central_west")
+
+rent_cw <- rent %>%
+  filter(!is.na(median_rent),
+         cw_lga == 1) %>%
+  group_by(week_ending) %>%
+  summarise(median_rent = median(median_rent),
+            median_change = median(X12_month_change)) %>%
+  mutate(geography = "central_west")
 
 ## LGA averages
 childcare_lga <- childcare %>%
@@ -82,26 +110,26 @@ childcare_lga <- childcare %>%
   slice_max(n) %>%
   select(lga, avg_quality) %>%
   left_join(childcare_lga, by = "lga") %>%
-  tibble()
+  tibble() %>%
+  rename(geography = lga)
 
 rent_lga <- rent %>%
   filter(!is.na(median_rent),
          cw_lga == 1) %>%
   group_by(lga, week_ending) %>%
   summarise(median_rent = median(median_rent),
-            median_change = median(X12_month_change))
+            median_change = median(X12_month_change)) %>%
+  rename(geography = lga)
 
-### Combine state and lga dataframes and export
+### Combine state, cw and lga dataframes and export
 childcare_lga %>%
-  mutate(state = NA) %>%
-  bind_rows(childcare_state %>%
-              mutate(lga = NA)) %>%
-  mutate(lga = str_remove_all(lga, " .*")) %>%
+  bind_rows(childcare_cw) %>%
+  bind_rows(childcare_state) %>%
+  mutate(geography = str_remove_all(geography, " .*")) %>%
   write.csv("./childcare_results.csv")
 
 rent_lga %>%
-  mutate(state = NA) %>%
-  bind_rows(rent_state %>%
-              mutate(lga = NA)) %>%
-  mutate(lga = str_remove_all(lga, " .*")) %>%
+  bind_rows(rent_cw) %>%
+  bind_rows(rent_state) %>%
+  mutate(geography = str_remove_all(geography, " .*")) %>%
   write.csv("./rent_results.csv")
