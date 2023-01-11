@@ -1,6 +1,45 @@
 
-## This function scrapes the childcare website to collect vacancies data, avg cost and avg quality
-get_childcare_data <- function(link, postcode){
+## This function scrapes the childcare website to collect vacancies data
+get_childcare_source <- function(pagesource = remote_driver$getPageSource()){
+  
+  results <- pagesource %>%
+    pluck(1) %>%
+    xml2::read_html() %>%
+    rvest::html_element(".results") %>%
+    rvest::html_children() %>%
+    map(~ rvest::html_text2(.x)) %>%
+    unlist()
+  
+  results <- results[-c(1:2)]
+  
+  return(results)
+  
+}
+
+get_childcare_details <- function(results) {
+  
+  # Name
+  name <- results %>%
+    str_extract(".*\n") %>%
+    str_remove("\n")
+  
+  # Address
+  address <- results %>%
+    str_extract(".*\nContact") %>%
+    str_remove("\nContact")
+  
+  # Vacancy
+  vacancy <- results %>%
+    str_extract(".*\nFees") %>%
+    str_remove("\nFees")
+  
+  tibble(name = name,
+         address = address,
+         vacancy = vacancy)
+  
+}
+
+get_childcare_data_superseded <- function(link, postcode){
   
   session <- polite::bow(link)
   
