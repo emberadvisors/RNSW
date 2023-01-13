@@ -11,6 +11,9 @@ library(polite)
 library(absmapsdata) #to install run remotes::install_github("wfmackey/absmapsdata")
 library(RSelenium)
 
+t_date <- today() %>%
+  str_replace_all("-", "_")
+
 ## Read functions
 source("./R/get_data.R")
 
@@ -94,7 +97,7 @@ childcare_data <- childcare_data %>%
   select(name, address, vacancy, postcode, lga = lga.y)
 
 ## save data
-write.csv(childcare_data, "./Data/childcare_vacancies.csv")
+write.csv(childcare_data, glue::glue("./Data/childcare_vacancies_raw_{t_date}.csv"))
 
 ## calculate vacancies for central west lgas
 central_west_results <- childcare_data %>%
@@ -118,4 +121,4 @@ central_west_results <- central_west_results %>%
   bind_rows(central_west_results) %>%
   select(geography = lga, vacancy_rate, no_vacancy = `No Vacancy`, vacancy = Vacancy, total = Total)
 
-write.csv(central_west_results, "./Data/central_west_childcare_vacancies.csv")
+write.csv(central_west_results, glue::glue("./Data/childcare_vacancies_results_{t_date}.csv"))
