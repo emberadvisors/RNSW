@@ -10,6 +10,7 @@ library(rvest)
 library(polite)
 library(absmapsdata) #to install run remotes::install_github("wfmackey/absmapsdata")
 library(RSelenium)
+library(lubridate)
 
 t_date <- today() %>%
   str_replace_all("-", "_")
@@ -51,6 +52,10 @@ driver$server$output()
 
 ## Create empty tibble for results to be put into
 childcare_data <- tibble()
+
+## If scrape stops mid-way through, filter the postcodes that haven't been scraped
+corro <- corro %>%
+  filter(!lga %in% childcare_data$lga)
 
 ## Loop the locations into selenium scrape
 for (i in 1:length(corro$lga)) {
@@ -116,9 +121,23 @@ central_west_results <- central_west_results %>%
   ungroup() %>%
   select(-lga, -vacancy_rate) %>%
   summarise_all(sum) %>%
-  mutate(lga = "central_west_total",
+  mutate(lga = "central_west",
          vacancy_rate = Vacancy/Total) %>%
   bind_rows(central_west_results) %>%
   select(geography = lga, vacancy_rate, no_vacancy = `No Vacancy`, vacancy = Vacancy, total = Total)
 
-write.csv(central_west_results, glue::glue("./Data/childcare_vacancies_results_{t_date}.csv"))
+## calculate vacancies for all of NSW
+results <- childcare_data %>%
+  # filter out those without vacancy data
+  filter(!is.na(vacancy)) %>%
+  count(vacancy) %>%
+  pivot_wider(names_from = vacancy, values_from = n) %>%
+  replace(is.na(.), 0) %>%
+  mutate(geography = "nsw",
+         Total = `No Vacancy` + Vacancy,
+         vacancy_rate = Vacancy/Total) %>%
+  select(geography, vacancy_rate, no_vacancy = `No Vacancy`, vacancy = Vacancy, total = Total) %>%
+  bind_rows(central_west_results)
+  
+
+write.csv(results, glue::glue("./Data/childcare_vacancies_results_{t_date}.csv"))
