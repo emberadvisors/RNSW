@@ -152,6 +152,8 @@ vacancies_lga <- vacancies %>%
 vacancies_lga %>%
   bind_rows(vacancies_cw) %>%
   bind_rows(vacancies_state) %>%
-  mutate(geography = str_remove_all(geography, " .*")) %>%
-  write.csv(glue::glue("./Data/vacancies_results_{t_date}.csv"))
+  mutate(geography = str_remove_all(geography, " .*"),
+         month = as.Date(glue("{month}-01"), format = "%Y-%m-%d"),
+         month = format(month, "%d-%m-%Y")) %>%
+  write.csv(glue::glue("./Data/rent_vacancies_results_{t_date}.csv"))
 
