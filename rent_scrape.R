@@ -30,47 +30,6 @@ corro <- absmapsdata::get_correspondence_absmaps("postcode", 2019, "state", 2016
 postcodes <- corro$postcode %>%
   unique()
 
-#### Median asking rent scrape ####
-## Get the url for the relevant website
-asking_rents_url <- "https://sqmresearch.com.au/weekly-rents.php?postcode="
-p_prices_url <- "https://sqmresearch.com.au/asking-property-prices.php?postcode="
-
-## Make tibble with url to scrape (i.e. static website url + dynamic postcode landing page)
-urls <- tibble(postcode = postcodes) %>%
-  mutate(rents_url = glue::glue("{asking_rents_url}{postcode}&t=1"),
-         p_prices_url = glue::glue("{p_prices_url}{postcode}&t=1"))
-
-### Results
-## We purrr::safely for the scraping functions to handle errors
-get_rent_safely <- purrr::safely(get_rent)
-get_property_price_safely <- purrr::safely(get_property_price)
-
-## Iterate the relevant scraping functions over each postcode
-rent_data_df <- purrr::map2(.x = urls$rents_url,
-                         .y = urls$postcode,
-                         ~get_rent_safely(link = .x, postcode = .y))
-p_prices_df <- purrr::map2(.x = urls$p_prices_url,
-                           .y = urls$postcode,
-                           ~get_property_price_safely(link = .x, postcode = .y))
-
-## Get only the scrape yielding results (purrr::safely splits out valid results and errors)
-rent_data_df <- rent_data_df %>%
-  map("result") %>%
-  bind_rows() %>%
-  mutate(state = "nsw",
-         X12_month_change = str_remove_all(X12_month_change, "%") %>%
-           as.numeric(X12_month_change)/100,
-         median_rent = str_remove_all(median_rent, ",") %>%
-           as.numeric(median_rent))
-p_prices_df <- p_prices_df %>%
-  map("result") %>%
-  bind_rows() %>%
-  mutate(state = "nsw",
-         `12_month_change` = str_remove_all(`12_month_change`, "%") %>%
-           as.numeric(`12_month_change`)/100,
-         median_asking_price = str_remove_all(median_asking_price, ",") %>%
-           as.numeric(median_asking_price))
-
 #### Vacancy rate scrape ####
 vacancy_rates <- "/html/body/div/div/div/div/div/div[1]/div/svg/g[7]/g[3]"
 
@@ -144,8 +103,6 @@ for (i in 1:length(postcodes)) {
 
 try(remote_driver$quit())
 
-write.csv(vacancy_data, glue::glue("./Data/vacancies_raw_{t_date}.csv"))
-
 #### Clean results ####
 ## ABS correspondence for postcode to LGA so we can get postcodes for the relevant LGAs in Central West 
 # Get poa to lga corro
@@ -162,89 +119,35 @@ central_west_lga <- corro %>%
   filter(str_detect(tolower(lga), central_west_lga) & !str_detect(tolower(lga), "shire"))
 
 ## map data to CW lga
-rent <- rent_data_df %>%
-  left_join(corro, by = "postcode") %>%
-  mutate(cw_lga = if_else(postcode %in% central_west_lga$postcode, 1, 0))
 vacancies <- vacancy_data %>%
-  mutate(postcode = as.numeric(postcode)) %>%
-  left_join(corro, by = "postcode") %>%
-  mutate(cw_lga = if_else(postcode %in% central_west_lga$postcode, 1, 0))
-prices <- p_prices_df %>%
   mutate(postcode = as.numeric(postcode)) %>%
   left_join(corro, by = "postcode") %>%
   mutate(cw_lga = if_else(postcode %in% central_west_lga$postcode, 1, 0))
 
 ## Calculate results
 # State avg
-rent_state <- rent %>%
-  filter(!is.na(median_rent)) %>%
-  group_by(state, week_ending) %>%
-  summarise(median_rent = median(median_rent),
-            median_change = median(X12_month_change)) %>%
-  rename(geography = state)
 vacancies_state <- vacancies %>%
   filter(vacancy_rate != 0) %>%
   mutate(state = "nsw") %>%
   group_by(state, month) %>%
   summarise(vacancy_rate = mean(vacancy_rate)) %>%
   rename(geography = state)
-prices_state <- prices %>%
-  filter(!is.na(median_asking_price)) %>%
-  mutate(state = "nsw") %>%
-  group_by(state, week_ending) %>%
-  summarise(median_asking_price = median(median_asking_price),
-            median_change = median(`12_month_change`)) %>%
-  rename(geography = state)
 
 # CW avg
-rent_cw <- rent %>%
-  filter(!is.na(median_rent),
-         cw_lga == 1) %>%
-  group_by(week_ending) %>%
-  summarise(median_rent = median(median_rent),
-            median_change = median(X12_month_change)) %>%
-  mutate(geography = "central_west")
 vacancies_cw <- vacancies %>%
   filter(vacancy_rate != 0,
          cw_lga == 1) %>%
   group_by(month) %>%
   summarise(vacancy_rate = mean(vacancy_rate)) %>%
   mutate(geography = "central_west")
-prices_cw <- prices %>%
-  filter(!is.na(median_asking_price),
-         cw_lga == 1) %>%
-  group_by(week_ending) %>%
-  summarise(median_asking_price = median(median_asking_price),
-            median_change = median(`12_month_change`)) %>%
-  mutate(geography = "central_west")
 
 # LGA avgs
-rent_lga <- rent %>%
-  filter(!is.na(median_rent),
-         cw_lga == 1) %>%
-  group_by(lga, week_ending) %>%
-  summarise(median_rent = median(median_rent),
-            median_change = median(X12_month_change)) %>%
-  rename(geography = lga)
 vacancies_lga <- vacancies %>%
   filter(vacancy_rate != 0,
          cw_lga == 1) %>%
   group_by(lga, month) %>%
   summarise(vacancy_rate = mean(vacancy_rate)) %>%
   rename(geography = lga)
-prices_lga <- prices %>%
-  filter(!is.na(median_asking_price),
-         cw_lga == 1) %>%
-  group_by(lga, week_ending) %>%
-  summarise(median_asking_price = median(median_asking_price),
-            median_change = median(`12_month_change`)) %>%
-  rename(geography = lga)
-
-rent_lga %>%
-  bind_rows(rent_cw) %>%
-  bind_rows(rent_state) %>%
-  mutate(geography = str_remove_all(geography, " .*")) %>%
-  write.csv(glue::glue("./Data/rent_results_{t_date}.csv"))
 
 vacancies_lga %>%
   bind_rows(vacancies_cw) %>%
@@ -252,8 +155,3 @@ vacancies_lga %>%
   mutate(geography = str_remove_all(geography, " .*")) %>%
   write.csv(glue::glue("./Data/vacancies_results_{t_date}.csv"))
 
-prices_lga %>%
-  bind_rows(prices_cw) %>%
-  bind_rows(prices_state) %>%
-  mutate(geography = str_remove_all(geography, " .*")) %>%
-  write.csv(glue::glue("./Data/price_results_{t_date}.csv"))
