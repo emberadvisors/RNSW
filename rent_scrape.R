@@ -1,11 +1,18 @@
 ##########
 ## Script to scrape median asking data for RNSW indicators
-## Author: Faza Bijaksana
-## Date: 20221209
+## Author: Ember Advisors
+## Date: 20230504
 ##########
 
 ### Setup
 ## Packages
+required_packages <- c("tidyverse", "glue", "rvest", "polite", "RSelenium", "lubridate", "here")
+for (pkg in required_packages) {
+  if (!require(pkg, character.only = TRUE)) {
+    install.packages(pkg, dependencies = TRUE)
+  }
+}
+
 library(tidyverse)
 library(glue)
 library(rvest)
@@ -14,6 +21,10 @@ library(absmapsdata) #to install run remotes::install_github("wfmackey/absmapsda
 library(RSelenium)
 library(lubridate)
 
+## Set working directory
+setwd(here::here())
+
+## today's date
 t_date <- today() %>%
   str_replace_all("-", "_")
 
@@ -102,6 +113,9 @@ for (i in 1:length(postcodes)) {
 }
 
 try(remote_driver$quit())
+
+## save data
+write.csv(vacancy_data, glue::glue("./Data/raw/rent_vacancies_raw_{t_date}.csv"))
 
 #### Clean results ####
 ## ABS correspondence for postcode to LGA so we can get postcodes for the relevant LGAs in Central West 

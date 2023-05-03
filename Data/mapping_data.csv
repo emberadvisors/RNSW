@@ -1,25 +1,25 @@
 metric,lga,data
-unemployment,Bathurst,0.022
-unemployment,Blayney,0.019
-unemployment,Cabonne,0.014
-unemployment,Cowra,0.038
-unemployment,Forbes,0.026
-unemployment,Lachlan,0.034
-unemployment,Lithgow,0.031
-unemployment,Mid-Western,0.025
-unemployment,Oberon,0.017
-unemployment,Orange,0.023
-unemployment,Parkes,0.033
-unemployment,Weddin,0.021
-Early education,Bathurst,0.504950495
-Early education,Blayney,0.142857143
-Early education,Cabonne,0.166666667
-Early education,Cowra,0.2
+Unemployment,Bathurst,0.016
+Unemployment,Blayney,0.013
+Unemployment,Cabonne,0.011
+Unemployment,Cowra,0.028
+Unemployment,Forbes,0.019
+Unemployment,Lachlan,0.026
+Unemployment,Lithgow,0.023
+Unemployment,Mid-Western,0.018
+Unemployment,Oberon,0.011
+Unemployment,Orange,0.016
+Unemployment,Parkes,0.024
+Unemployment,Weddin,0.018
+Early education,Bathurst,0.6
+Early education,Blayney,0.411764706
+Early education,Cabonne,0.285714286
+Early education,Cowra,0.7
 Early education,Forbes,0.25
 Early education,Lachlan,0.666666667
-Early education,Lithgow,0.375
-Early education,Mid-Western,0.307692308
+Early education,Lithgow,0.444444444
+Early education,Mid-Western,0.333333333
 Early education,Oberon,0
-Early education,Orange,0.448275862
-Early education,Parkes,0.285714286
-Early education,Weddin,1
+Early education,Orange,0.4
+Early education,Parkes,0.333333333
+Early education,Weddin,0.333333333
